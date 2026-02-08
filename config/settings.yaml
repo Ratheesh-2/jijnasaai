@@ -1,0 +1,99 @@
+models:
+  default: gpt-4o
+  available:
+    - id: gpt-4o
+      provider: openai
+      name: GPT-4o
+      max_tokens: 4096
+    - id: gpt-4o-mini
+      provider: openai
+      name: GPT-4o Mini
+      max_tokens: 4096
+    - id: claude-sonnet-4-5-20250929
+      provider: anthropic
+      name: Claude Sonnet 4.5
+      max_tokens: 8192
+    - id: claude-haiku-4-5-20251001
+      provider: anthropic
+      name: Claude Haiku 4.5
+      max_tokens: 8192
+    - id: gemini-2.0-flash
+      provider: google
+      name: Gemini 2.0 Flash
+      max_tokens: 8192
+    - id: gemini-1.5-pro
+      provider: google
+      name: Gemini 1.5 Pro
+      max_tokens: 8192
+    - id: sonar-pro
+      provider: perplexity
+      name: Sonar Pro
+      max_tokens: 4096
+    - id: sonar
+      provider: perplexity
+      name: Sonar
+      max_tokens: 4096
+    - id: sonar-reasoning-pro
+      provider: perplexity
+      name: Sonar Reasoning Pro
+      max_tokens: 4096
+
+embedding:
+  model: text-embedding-3-small
+  dimensions: 1536
+
+rag:
+  chunk_size: 1000
+  chunk_overlap: 200
+  retrieval_k: 5
+  similarity_threshold: 0.3
+  supported_extensions:
+    - .pdf
+    - .txt
+    - .md
+
+voice:
+  stt_model: whisper-1
+  tts_model: tts-1
+  tts_voice: nova
+  tts_response_format: mp3
+
+# Pricing per 1M tokens (USD) unless otherwise noted
+pricing:
+  openai:
+    gpt-4o:
+      input: 2.50
+      output: 10.00
+    gpt-4o-mini:
+      input: 0.15
+      output: 0.60
+    text-embedding-3-small:
+      input: 0.02
+    whisper-1:
+      per_minute: 0.006
+    tts-1:
+      per_million_chars: 15.00
+  anthropic:
+    claude-sonnet-4-5-20250929:
+      input: 3.00
+      output: 15.00
+    claude-haiku-4-5-20251001:
+      input: 1.00
+      output: 5.00
+  google:
+    gemini-2.0-flash:
+      input: 0.10
+      output: 0.40
+    gemini-1.5-pro:
+      input: 1.25
+      output: 10.00
+  perplexity:
+    sonar-pro:
+      input: 3.00
+      output: 15.00
+    sonar:
+      input: 1.00
+      output: 1.00
+    sonar-reasoning-pro:
+      input: 2.00
+      output: 8.00
