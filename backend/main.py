@@ -47,6 +47,17 @@ def create_app() -> FastAPI:
     if extra_origins:
         origins.extend(o.strip() for o in extra_origins.split(",") if o.strip())
 
+    # Railway: auto-add the public domain so browser→backend CORS works
+    railway_domain = os.environ.get("RAILWAY_PUBLIC_DOMAIN", "")
+    if railway_domain:
+        origins.append(f"https://{railway_domain}")
+
+    # Railway may assign a custom PORT; add localhost:<PORT> for in-container requests
+    railway_port = os.environ.get("PORT", "")
+    if railway_port and railway_port != "8501":
+        origins.append(f"http://localhost:{railway_port}")
+        origins.append(f"http://127.0.0.1:{railway_port}")
+
     app.add_middleware(
         CORSMiddleware,
         allow_origins=origins,

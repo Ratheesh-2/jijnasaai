@@ -6,7 +6,8 @@ dockerfilePath = "Dockerfile"
 # Railway exposes one port per service; Streamlit is the user-facing entry point
 # Backend runs internally on :8000, frontend proxied via Railway on :8501
 startCommand = "python run.py"
-healthcheckPath = "/health"
-healthcheckTimeout = 30
+# No healthcheckPath — Railway falls back to TCP-alive check on PORT.
+# Streamlit binds to PORT (see run.py), so the check passes as soon as
+# the frontend process starts listening.
 restartPolicyType = "ON_FAILURE"
 restartPolicyMaxRetries = 3

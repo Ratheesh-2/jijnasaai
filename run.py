@@ -17,23 +17,34 @@ def main():
     is_docker = os.environ.get("DOCKER", "0") == "1"
     host = "0.0.0.0" if is_docker else "127.0.0.1"
 
+    # Railway sets PORT env var — the service MUST listen on this port.
+    # We bind Streamlit (the user-facing frontend) to PORT,
+    # and FastAPI (the internal backend API) to a fixed internal port.
+    railway_port = os.environ.get("PORT", "")
+    backend_port = "8000"
+    frontend_port = railway_port if railway_port else "8501"
+
+    # Guard against port collision (unlikely but possible on Railway)
+    if frontend_port == backend_port:
+        backend_port = "8001"
+
     # Backend: no --reload in production (Docker)
     backend_cmd = [
         sys.executable, "-m", "uvicorn", "backend.main:app",
-        "--host", host, "--port", "8000",
+        "--host", host, "--port", backend_port,
     ]
     if not is_docker:
         backend_cmd.append("--reload")
 
-    print(f"Starting backend (FastAPI) on http://{host}:8000 ...")
+    print(f"Starting backend (FastAPI) on http://{host}:{backend_port} ...")
     backend = subprocess.Popen(backend_cmd, cwd=str(root))
 
     time.sleep(2)
 
-    print(f"Starting frontend (Streamlit) on http://{host}:8501 ...")
+    print(f"Starting frontend (Streamlit) on http://{host}:{frontend_port} ...")
     frontend = subprocess.Popen(
         [sys.executable, "-m", "streamlit", "run", str(root / "frontend" / "app.py"),
-         "--server.port", "8501", "--server.address", host],
+         "--server.port", frontend_port, "--server.address", host],
         cwd=str(root),
     )
 
