@@ -20,15 +20,17 @@ async def lifespan(app: FastAPI):
     # Ensure data directories exist
     db_path = Path(settings.database_url)
     db_path.parent.mkdir(parents=True, exist_ok=True)
+
     Path(settings.chroma_persist_dir).mkdir(parents=True, exist_ok=True)
     Path("data/uploads").mkdir(parents=True, exist_ok=True)
 
     # Initialize database
     set_db_path(settings.database_url)
     await init_db()
-
     logger.info("JijnasaAI backend started")
+
     yield
+
     logger.info("JijnasaAI backend shutting down")
 
 
@@ -40,12 +42,30 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
     )
 
+    # Routers
+    app.include_router(health.router)
+    app.include_router(conversations.router)
+    app.include_router(chat.router)
+    app.include_router(documents.router)
+    app.include_router(voice.router)
+    app.include_router(costs.router)
+    app.include_router(analytics.router)
+
     # CORS: read allowed origins from env, with sensible defaults
     import os
+
     extra_origins = os.environ.get("ALLOWED_ORIGINS", "")
-    origins = ["http://localhost:8501", "http://127.0.0.1:8501"]
+    origins = [
+        "http://localhost:8501",
+        "http://127.0.0.1:8501",
+    ]
+
     if extra_origins:
-        origins.extend(o.strip() for o in extra_origins.split(",") if o.strip())
+        origins.extend(
+            o.strip()
+            for o in extra_origins.split(",")
+            if o.strip()
+        )
 
     # Railway: auto-add the public domain so browser→backend CORS works
     railway_domain = os.environ.get("RAILWAY_PUBLIC_DOMAIN", "")
@@ -66,15 +86,16 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
 
-    app.include_router(health.router)
-    app.include_router(conversations.router)
-    app.include_router(chat.router)
-    app.include_router(documents.router)
-    app.include_router(voice.router)
-    app.include_router(costs.router)
-    app.include_router(analytics.router)
-
     return app
 
 
 app = create_app()
+
+
+@app.get("/")
+async def read_root():
+    return {
+        "status": "ok",
+        "message": "JijnasaAI backend is running",
+        "docs": "/docs",
+    }
