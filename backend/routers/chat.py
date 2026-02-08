@@ -124,6 +124,7 @@ async def chat_completions(
             full_response = ""
             input_tokens = 0
             output_tokens = 0
+            web_citations = []
 
             async for chunk in llm_router.stream_chat(
                 messages=messages,
@@ -137,9 +138,26 @@ async def chat_completions(
                         "event": "token",
                         "data": json.dumps({"text": chunk.text}),
                     }
+                if chunk.citations:
+                    web_citations.extend(chunk.citations)
                 if chunk.is_final:
                     input_tokens = chunk.input_tokens
                     output_tokens = chunk.output_tokens
+
+            # Emit web search sources if any provider returned citations
+            if web_citations:
+                # Deduplicate by URL
+                seen_urls = set()
+                unique_citations = []
+                for c in web_citations:
+                    url = c.get("url", "")
+                    if url and url not in seen_urls:
+                        seen_urls.add(url)
+                        unique_citations.append(c)
+                yield {
+                    "event": "web_sources",
+                    "data": json.dumps(unique_citations),
+                }
 
             # Calculate cost
             cost = cost_tracker.calculate_chat_cost(

@@ -5,10 +5,7 @@ from typing import Optional
 import httpx
 from httpx_sse import connect_sse
 
-BACKEND_URL = os.environ.get(
-    "BACKEND_URL",
-    "https://jijnasaai-production.up.railway.app",
-)
+BACKEND_URL = os.environ.get("BACKEND_URL", "http://127.0.0.1:8000")
 
 
 class APIClient:

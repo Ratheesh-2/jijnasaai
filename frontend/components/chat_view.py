@@ -5,13 +5,16 @@ import streamlit as st
 from frontend.components.sidebar import MODELS
 
 SUGGESTED_PROMPTS = [
-    "Explain quantum computing in simple terms",
+    "What are the biggest tech stories this week?",
     "Write a Python function to merge two sorted lists",
     "Summarize my uploaded PDF document",
-    "Compare pros and cons of React vs Vue",
+    "Compare the latest iPhone vs Samsung Galaxy",
     "Help me write a professional email",
-    "What are the latest trends in AI?",
+    "Explain quantum computing in simple terms",
 ]
+
+# Models that have built-in web search
+WEB_SEARCH_PROVIDERS = {"Perplexity", "Google"}
 
 
 def _get_model_display_name(model_id: str) -> str:
@@ -19,6 +22,47 @@ def _get_model_display_name(model_id: str) -> str:
         if m["id"] == model_id:
             return m["name"]
     return model_id
+
+
+def _get_model_provider(model_id: str) -> str:
+    for m in MODELS:
+        if m["id"] == model_id:
+            return m["provider"]
+    return ""
+
+
+def _render_web_sources(web_sources: list[dict]):
+    """Render web search citations in a styled expander."""
+    if not web_sources:
+        return
+    with st.expander(f"Web Sources ({len(web_sources)})"):
+        for src in web_sources:
+            url = src.get("url", "")
+            title = src.get("title", "Source")
+            source_type = src.get("source", "web")
+            badge = "Perplexity" if source_type == "perplexity" else "Google"
+            if url:
+                st.markdown(
+                    f"[{title}]({url})  \n"
+                    f"<small style='color: #888;'>{badge} | {url[:80]}{'...' if len(url) > 80 else ''}</small>",
+                    unsafe_allow_html=True,
+                )
+            else:
+                st.caption(f"{title} ({badge})")
+
+
+def _render_rag_sources(sources: list[dict]):
+    """Render RAG document sources in a styled expander."""
+    if not sources:
+        return
+    with st.expander("Document Sources"):
+        for src in sources:
+            st.caption(
+                f"**{src.get('filename', 'Unknown')}** "
+                f"(chunk {src.get('chunk_index', '?')}, "
+                f"similarity: {src.get('similarity', '?')})"
+            )
+            st.text(src.get("content_preview", "")[:200])
 
 
 def render_chat():
@@ -42,17 +86,16 @@ def render_chat():
     for msg in st.session_state.messages:
         with st.chat_message(msg["role"]):
             st.markdown(msg["content"])
+            # Show RAG document sources
             if msg.get("sources"):
-                with st.expander("Sources"):
-                    for src in msg["sources"]:
-                        st.caption(
-                            f"**{src.get('filename', 'Unknown')}** "
-                            f"(chunk {src.get('chunk_index', '?')}, "
-                            f"similarity: {src.get('similarity', '?')})"
-                        )
-                        st.text(src.get("content_preview", "")[:200])
+                _render_rag_sources(msg["sources"])
+            # Show web search sources
+            if msg.get("web_sources"):
+                _render_web_sources(msg["web_sources"])
             if msg.get("used_docs"):
                 st.caption("Used document context")
+            if msg.get("web_grounded"):
+                st.caption("Grounded in web search")
 
     # Check for voice transcription
     if st.session_state.get("voice_transcription"):
@@ -82,16 +125,21 @@ def _handle_user_message(prompt: str):
 def _handle_single_model(prompt: str):
     """Stream response from a single model."""
     model_name = _get_model_display_name(st.session_state.model_id)
+    model_provider = _get_model_provider(st.session_state.model_id)
 
     with st.chat_message("assistant"):
         response_placeholder = st.empty()
         status_area = st.container()
 
-        # Show thinking indicator
-        response_placeholder.markdown(f"*{model_name} is thinking...*")
+        # Show thinking indicator with web search hint
+        if model_provider in WEB_SEARCH_PROVIDERS:
+            response_placeholder.markdown(f"*{model_name} is searching the web...*")
+        else:
+            response_placeholder.markdown(f"*{model_name} is thinking...*")
 
         full_response = ""
         sources = []
+        web_sources = []
         usage = {}
         conversation_id = st.session_state.conversation_id
 
@@ -116,6 +164,9 @@ def _handle_single_model(prompt: str):
                 elif evt_type == "sources":
                     sources = data if isinstance(data, list) else []
 
+                elif evt_type == "web_sources":
+                    web_sources = data if isinstance(data, list) else []
+
                 elif evt_type == "usage":
                     usage = data
                     if data.get("conversation_id"):
@@ -131,15 +182,13 @@ def _handle_single_model(prompt: str):
             # Finalize display
             response_placeholder.markdown(full_response)
 
+            # Show RAG document sources
             if sources:
-                with st.expander("Sources"):
-                    for src in sources:
-                        st.caption(
-                            f"**{src.get('filename', 'Unknown')}** "
-                            f"(chunk {src.get('chunk_index', '?')}, "
-                            f"similarity: {src.get('similarity', '?')})"
-                        )
-                        st.text(src.get("content_preview", "")[:200])
+                _render_rag_sources(sources)
+
+            # Show web search sources
+            if web_sources:
+                _render_web_sources(web_sources)
 
             if usage:
                 with status_area:
@@ -157,7 +206,9 @@ def _handle_single_model(prompt: str):
         "role": "assistant",
         "content": full_response,
         "sources": sources,
+        "web_sources": web_sources,
         "used_docs": bool(sources),
+        "web_grounded": bool(web_sources),
     }
     st.session_state.messages.append(msg_data)
 
@@ -184,12 +235,15 @@ def _handle_comparison(prompt: str):
     # Create side-by-side columns
     cols = st.columns(num_models)
     placeholders = []
-    results = [{"text": "", "usage": {}, "error": None} for _ in compare_models]
+    results = [{"text": "", "usage": {}, "error": None, "web_sources": []} for _ in compare_models]
 
     for i, model_id in enumerate(compare_models):
         model_name = _get_model_display_name(model_id)
+        provider = _get_model_provider(model_id)
         with cols[i]:
             st.markdown(f"**{model_name}**")
+            if provider in WEB_SEARCH_PROVIDERS:
+                st.caption("Web search enabled")
             placeholders.append(st.empty())
             placeholders[-1].markdown(f"*{model_name} is thinking...*")
 
@@ -209,6 +263,8 @@ def _handle_comparison(prompt: str):
                     results[idx]["text"] += data.get("text", "")
                 elif evt_type == "usage":
                     results[idx]["usage"] = data
+                elif evt_type == "web_sources":
+                    results[idx]["web_sources"] = data if isinstance(data, list) else []
                 elif evt_type == "error":
                     results[idx]["error"] = data.get("error", "Unknown error")
                     return
@@ -238,11 +294,14 @@ def _handle_comparison(prompt: str):
         if not all_done:
             time.sleep(0.1)
 
-    # Show final results with usage
+    # Show final results with usage and web sources
     for i in range(num_models):
         with cols[i]:
             if results[i]["text"]:
                 placeholders[i].markdown(results[i]["text"])
+            # Show web sources per model
+            if results[i].get("web_sources"):
+                _render_web_sources(results[i]["web_sources"])
             usage = results[i].get("usage", {})
             if usage:
                 st.caption(

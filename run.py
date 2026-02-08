@@ -28,6 +28,15 @@ def main():
     if frontend_port == backend_port:
         backend_port = "8001"
 
+    # Startup banner -- visible in Railway deploy logs to confirm run.py is executing
+    print("=" * 60)
+    print("  JijnasaAI -- run.py starting")
+    print(f"  DOCKER={os.environ.get('DOCKER', '(not set)')}")
+    print(f"  PORT={railway_port or '(not set, using default 8501)'}")
+    print(f"  Backend  (FastAPI)   -> http://{host}:{backend_port}")
+    print(f"  Frontend (Streamlit) -> http://{host}:{frontend_port}")
+    print("=" * 60)
+
     # Backend: no --reload in production (Docker)
     backend_cmd = [
         sys.executable, "-m", "uvicorn", "backend.main:app",

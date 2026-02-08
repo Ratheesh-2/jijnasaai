@@ -62,8 +62,10 @@ def render_sidebar():
 
     # --- Model selector ---
     st.markdown("**Model**")
+    _WEB_PROVIDERS = {"Perplexity", "Google"}
     model_labels = [
         f"{m['name']}  {m['cost_hint']}  ({m['provider']})"
+        + (" | Web" if m["provider"] in _WEB_PROVIDERS else "")
         for m in MODELS
     ]
     model_ids = [m["id"] for m in MODELS]
@@ -83,10 +85,10 @@ def render_sidebar():
 
     # Show provider badge for selected model
     selected_model = MODELS[selected_idx]
-    st.markdown(
-        _provider_badge_html(selected_model["provider"]),
-        unsafe_allow_html=True,
-    )
+    badge_html = _provider_badge_html(selected_model["provider"])
+    if selected_model["provider"] in _WEB_PROVIDERS:
+        badge_html += ' <span style="font-size: 0.8em; color: #4CAF50;">Web search enabled</span>'
+    st.markdown(badge_html, unsafe_allow_html=True)
 
     # --- Temperature ---
     st.session_state.temperature = st.slider(

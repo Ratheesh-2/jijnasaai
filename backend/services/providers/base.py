@@ -11,6 +11,7 @@ class StreamChunk:
     input_tokens: int = 0
     output_tokens: int = 0
     finish_reason: str | None = None
+    citations: list[dict] = field(default_factory=list)  # Web search sources
 
 
 class BaseLLMProvider(ABC):
