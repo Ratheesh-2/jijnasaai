@@ -23,5 +23,5 @@ ENV DOCKER=1
 # Expose both backend and frontend ports
 EXPOSE 8000 8501
 
-# Launch both services
-CMD ["python", "-m", "uvicorn", "backend.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Launch both services via run.py (FastAPI on :8000 + Streamlit on $PORT)
+CMD ["python", "run.py"]
