@@ -144,6 +144,19 @@ async def chat_completions(
                     input_tokens = chunk.input_tokens
                     output_tokens = chunk.output_tokens
 
+            # Log stream results for debugging
+            logger.info(
+                "Chat stream complete: model=%s response_len=%d citations=%d "
+                "input_tokens=%d output_tokens=%d",
+                request.model_id, len(full_response), len(web_citations),
+                input_tokens, output_tokens,
+            )
+            if not full_response:
+                logger.warning(
+                    "EMPTY RESPONSE from model %s for message: %.100s",
+                    request.model_id, request.message,
+                )
+
             # Emit web search sources if any provider returned citations
             if web_citations:
                 # Deduplicate by URL

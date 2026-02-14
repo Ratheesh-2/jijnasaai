@@ -179,8 +179,13 @@ def _handle_single_model(prompt: str):
                 elif evt_type == "done":
                     break
 
-            # Finalize display
-            response_placeholder.markdown(full_response)
+            # Finalize display -- never show silent emptiness
+            if full_response:
+                response_placeholder.markdown(full_response)
+            else:
+                response_placeholder.markdown(
+                    "*No response received from the model. Please try again.*"
+                )
 
             # Show RAG document sources
             if sources:
@@ -299,6 +304,10 @@ def _handle_comparison(prompt: str):
         with cols[i]:
             if results[i]["text"]:
                 placeholders[i].markdown(results[i]["text"])
+            elif not results[i]["error"]:
+                placeholders[i].markdown(
+                    "*No response received. Please try again.*"
+                )
             # Show web sources per model
             if results[i].get("web_sources"):
                 _render_web_sources(results[i]["web_sources"])
