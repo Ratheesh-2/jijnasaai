@@ -1,10 +1,11 @@
 import threading
+import time as _time
 
 import streamlit as st
 
 from frontend.components.sidebar import MODELS
 
-SUGGESTED_PROMPTS = [
+_FALLBACK_PROMPTS = [
     "What are the biggest tech stories this week?",
     "Write a Python function to merge two sorted lists",
     "Summarize my uploaded PDF document",
@@ -13,8 +14,39 @@ SUGGESTED_PROMPTS = [
     "Explain quantum computing in simple terms",
 ]
 
+# How long (seconds) before we re-fetch personalised suggestions
+_SUGGESTIONS_TTL = 300  # 5 minutes
+
 # Models that have built-in web search
 WEB_SEARCH_PROVIDERS = {"Perplexity", "Google"}
+
+
+def _get_suggested_prompts() -> list[str]:
+    """Return 6 suggested prompts, personalised when possible.
+
+    Results are cached in session_state for _SUGGESTIONS_TTL seconds so we
+    don't call the backend on every Streamlit rerun.
+    """
+    now = _time.time()
+    cached = st.session_state.get("_suggested_prompts")
+    cached_at = st.session_state.get("_suggested_prompts_ts", 0)
+
+    if cached and (now - cached_at) < _SUGGESTIONS_TTL:
+        return cached
+
+    try:
+        suggestions = st.session_state.api_client.get_suggestions()
+        if suggestions and len(suggestions) >= 4:
+            st.session_state["_suggested_prompts"] = suggestions
+            st.session_state["_suggested_prompts_ts"] = now
+            return suggestions
+    except Exception:
+        pass
+
+    # Fallback — use defaults but still cache to avoid hammering backend
+    st.session_state["_suggested_prompts"] = _FALLBACK_PROMPTS
+    st.session_state["_suggested_prompts_ts"] = now
+    return _FALLBACK_PROMPTS
 
 
 def _get_model_display_name(model_id: str) -> str:
@@ -70,8 +102,9 @@ def render_chat():
     # Show suggested prompts when no messages
     if not st.session_state.messages:
         st.markdown("### What would you like to explore?")
+        prompts = _get_suggested_prompts()
         cols = st.columns(2)
-        for i, prompt_text in enumerate(SUGGESTED_PROMPTS):
+        for i, prompt_text in enumerate(prompts):
             with cols[i % 2]:
                 if st.button(
                     prompt_text,

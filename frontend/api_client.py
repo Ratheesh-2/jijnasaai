@@ -160,6 +160,16 @@ class APIClient:
             r.raise_for_status()
             return r.json()
 
+    def get_suggestions(self) -> list[str]:
+        """Fetch dynamic suggested prompts (3s timeout, fallback on failure)."""
+        try:
+            with httpx.Client(timeout=5.0) as client:
+                r = client.get(f"{self.base_url}/suggestions")
+                r.raise_for_status()
+                return r.json().get("suggestions", [])
+        except Exception:
+            return []
+
     def health_check(self) -> dict:
         with httpx.Client(timeout=5.0) as client:
             r = client.get(f"{self.base_url}/health")

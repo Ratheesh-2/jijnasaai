@@ -7,7 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from backend.config import get_settings
 from backend.database import init_db, set_db_path
-from backend.routers import health, conversations, chat, documents, voice, costs, analytics
+from backend.routers import health, conversations, chat, documents, voice, costs, analytics, suggestions
 
 logger = logging.getLogger(__name__)
 
@@ -50,6 +50,7 @@ def create_app() -> FastAPI:
     app.include_router(voice.router)
     app.include_router(costs.router)
     app.include_router(analytics.router)
+    app.include_router(suggestions.router)
 
     # CORS: read allowed origins from env, with sensible defaults
     import os
