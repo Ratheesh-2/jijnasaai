@@ -12,7 +12,6 @@ from frontend.components.sidebar import render_sidebar
 from frontend.components.chat_view import render_chat
 from frontend.components.document_upload import render_document_upload
 from frontend.components.voice_controls import render_voice_controls
-from frontend.components.cost_display import render_cost_display
 from frontend.components.admin_dashboard import render_admin_dashboard
 
 st.set_page_config(
@@ -270,8 +269,6 @@ with st.sidebar:
     render_sidebar()
     st.divider()
     render_document_upload()
-    st.divider()
-    render_cost_display()
 
 # --- Main area ---
 render_voice_controls()
