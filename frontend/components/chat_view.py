@@ -14,11 +14,111 @@ _FALLBACK_PROMPTS = [
     "Explain quantum computing in simple terms",
 ]
 
+# Emoji icons paired with each card position (cycles if more prompts)
+_CARD_ICONS = ["\u26a1", "\U0001f4bb", "\U0001f4c4", "\U0001f50d", "\u270f\ufe0f", "\U0001f9e0"]
+
 # How long (seconds) before we re-fetch personalised suggestions
 _SUGGESTIONS_TTL = 300  # 5 minutes
 
 # Models that have built-in web search
 WEB_SEARCH_PROVIDERS = {"Perplexity", "Google"}
+
+# ---------------------------------------------------------------------------
+# Glassmorphic suggestion cards CSS
+# ---------------------------------------------------------------------------
+_GLASS_CSS = """
+<style>
+/* --- Animated gradient header --- */
+@keyframes jijnasa-gradient-shift {
+    0%   { background-position: 0% 50%; }
+    50%  { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+}
+.jijnasa-explore-header {
+    text-align: center;
+    padding: 1.6rem 0 1.2rem 0;
+}
+.jijnasa-explore-header h2 {
+    font-size: 1.75em;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    background: linear-gradient(135deg, #667eea, #764ba2, #f093fb, #667eea);
+    background-size: 300% 300%;
+    animation: jijnasa-gradient-shift 6s ease infinite;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin: 0 0 0.25em 0;
+}
+.jijnasa-explore-header p {
+    color: #888;
+    font-size: 0.95em;
+    margin: 0;
+}
+
+/* --- Glassmorphic suggestion buttons --- */
+/*
+ * These styles target suggestion buttons via their key-based IDs.
+ * Streamlit gives each keyed button a data-testid="stBaseButton-secondary"
+ * and wraps it in elements we can target.  Since this CSS is only
+ * injected on the empty-messages landing page, we scope broadly to
+ * all secondary buttons in the main area — no other buttons exist
+ * on this page state.
+ */
+[data-testid="stMainBlockContainer"] .stButton > button {
+    background: rgba(255, 255, 255, 0.04) !important;
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+    border-radius: 16px !important;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    padding: 1rem 1.2rem !important;
+    min-height: 72px !important;
+    color: #d0d0d0 !important;
+    font-size: 0.92em !important;
+    line-height: 1.45 !important;
+    text-align: left !important;
+    white-space: normal !important;
+    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1),
+                box-shadow 0.3s cubic-bezier(0.34, 1.56, 0.64, 1),
+                border-color 0.3s ease,
+                color 0.3s ease !important;
+    position: relative;
+    overflow: hidden;
+}
+/* Subtle gradient shimmer */
+[data-testid="stMainBlockContainer"] .stButton > button::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 16px;
+    background: linear-gradient(135deg,
+        rgba(102, 126, 234, 0.06),
+        rgba(118, 75, 162, 0.04),
+        transparent 60%);
+    pointer-events: none;
+}
+/* Hover glow + lift */
+[data-testid="stMainBlockContainer"] .stButton > button:hover {
+    transform: scale(1.04) !important;
+    border-color: rgba(102, 126, 234, 0.35) !important;
+    box-shadow: 0 0 24px rgba(102, 126, 234, 0.15),
+                0 8px 32px rgba(0, 0, 0, 0.2) !important;
+    color: #f0f0f0 !important;
+    background: rgba(255, 255, 255, 0.06) !important;
+}
+/* Active press feedback */
+[data-testid="stMainBlockContainer"] .stButton > button:active {
+    transform: scale(0.98) !important;
+    box-shadow: 0 0 12px rgba(102, 126, 234, 0.25) !important;
+}
+
+/* --- Divider below cards --- */
+.jijnasa-divider {
+    border: none;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    margin: 0.5rem 0 1.5rem 0;
+}
+</style>
+"""
 
 
 def _get_suggested_prompts() -> list[str]:
@@ -101,19 +201,34 @@ def render_chat():
     """Render chat history and handle new input."""
     # Show suggested prompts when no messages
     if not st.session_state.messages:
-        st.markdown("### What would you like to explore?")
+        # Inject glassmorphic CSS once
+        st.markdown(_GLASS_CSS, unsafe_allow_html=True)
+
+        # Animated gradient header
+        st.markdown(
+            '<div class="jijnasa-explore-header">'
+            "<h2>What would you like to explore?</h2>"
+            "<p>Pick a question or type your own below</p>"
+            "</div>",
+            unsafe_allow_html=True,
+        )
+
         prompts = _get_suggested_prompts()
+
         cols = st.columns(2)
         for i, prompt_text in enumerate(prompts):
+            icon = _CARD_ICONS[i % len(_CARD_ICONS)]
+            label = f"{icon}  {prompt_text}"
             with cols[i % 2]:
                 if st.button(
-                    prompt_text,
+                    label,
                     key=f"suggest_{i}",
                     use_container_width=True,
                 ):
                     _handle_user_message(prompt_text)
                     return
-        st.markdown("---")
+
+        st.markdown('<hr class="jijnasa-divider">', unsafe_allow_html=True)
 
     # Display existing messages
     for msg in st.session_state.messages:
